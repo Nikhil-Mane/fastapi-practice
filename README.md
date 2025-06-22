@@ -1,553 +1,237 @@
-# AsyncJobQueue API
+# AsyncJobQueue Microservices Project
 
-A FastAPI-based asynchronous job queue system with persistent database storage, supporting various types of real-world tasks.
+A robust, production-ready microservices system for asynchronous job processing, featuring FastAPI, PostgreSQL, Redis, and modular task generation.
 
-## 🚀 Features
+---
 
-- **Persistent Storage**: PostgreSQL database for job persistence
-- **Multiple Task Types**: HTTP requests, calculations, file operations, data transformations
-- **Real-time Processing**: Asynchronous job processing with background workers
-- **RESTful API**: Complete REST API for job management
-- **Error Handling**: Comprehensive error handling and logging
-- **Metrics**: Real-time job metrics and statistics
-- **Pagination**: Support for large job lists with pagination
+## Project Overview
 
-## 🛠️ Task Types Supported
+This project implements a scalable, containerized job queue system with two main microservices:
 
-### 1. HTTP Requests
-```json
-{
-  "task_type": "http_request",
-  "payload": {
-    "method": "GET",
-    "url": "https://api.github.com/users/octocat",
-    "headers": {"User-Agent": "JobQueue/1.0"}
-  }
-}
+- **AsyncJobQueue API** (`app/`): Handles job management, processing, and status tracking.
+- **Task Generator** (`task_generator/`): Continuously generates and submits diverse tasks to the job queue.
+
+Supporting services:
+- **PostgreSQL**: Persistent storage for jobs and task history.
+- **Redis**: Caching and rate limiting.
+
+All services are orchestrated using Docker Compose for easy local development and deployment.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────┐    ┌─────────────────────┐    ┌───────────────┐
+│   Task Generator    │───▶│   AsyncJobQueue API │───▶│  PostgreSQL   │
+│   (Port 8001)       │    │   (Port 8000)       │    │  (Port 5433)  │
+└─────────────────────┘    └─────────────────────┘    └───────────────┘
+         │                           │
+         ▼                           ▼
+┌─────────────────────┐    ┌─────────────────────┐
+│   Redis Cache       │    │   Health Checks     │
+│   (Port 6379)       │    │   & Monitoring      │
+└─────────────────────┘    └─────────────────────┘
 ```
 
-### 2. Mathematical Calculations
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "sum",
-    "numbers": [1, 2, 3, 4, 5]
-  }
-}
-```
+---
 
-### 3. File Operations
-```json
-{
-  "task_type": "file_operation",
-  "payload": {
-    "operation": "write",
-    "filename": "output.txt",
-    "content": "Hello World!"
-  }
-}
-```
+## Application Running Details
 
-### 4. Data Transformations
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "uppercase",
-    "data": "hello world"
-  }
-}
-```
-
-## 📋 Prerequisites
-
-- Python 3.8+
-- PostgreSQL 12+ (or Docker for automatic setup)
-- pip
-
-## 🚀 Quick Start
-
-### 1. Clone and Setup
+### 1. Start All Services
 
 ```bash
-git clone <repository-url>
-   cd fastapi-practice
-   ```
-
-### 2. Install Dependencies
-
-```bash
-cd app
-pip install -r requirements.txt
+docker-compose up --build
 ```
+- This command builds and starts all containers: PostgreSQL, Redis, AsyncJobQueue API, and Task Generator.
+- The first run may take a few minutes as images are built and dependencies installed.
 
-### 3. Run the Application
+### 2. Monitor Service Status
 
-```bash
-uvicorn main:app --reload
-```
-
-The application will automatically:
-- Start PostgreSQL in Docker (if Docker is running)
-- Create database tables
-- Start background workers
-- Be ready to accept jobs
-
-## 📚 API Endpoints
-
-### Job Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/submit` | Submit a new job |
-| `GET` | `/status/{job_id}` | Get job status and result |
-| `GET` | `/jobs` | Get all jobs (with pagination) |
-| `GET` | `/jobs/{status}` | Get jobs by status |
-| `DELETE` | `/jobs/{job_id}` | Delete a job |
-| `GET` | `/metrics` | Get system metrics |
-
-## 📝 Sample Jobs
-
-### HTTP Request Jobs
-
-**GET Request:**
-```json
-{
-  "task_type": "http_request",
-  "payload": {
-    "method": "GET",
-    "url": "https://jsonplaceholder.typicode.com/posts/1",
-    "headers": {
-      "User-Agent": "JobQueue/1.0"
-    }
-  }
-}
-```
-
-**POST Request:**
-```json
-{
-  "task_type": "http_request",
-  "payload": {
-    "method": "POST",
-    "url": "https://jsonplaceholder.typicode.com/posts",
-    "headers": {
-      "Content-Type": "application/json"
-    },
-    "data": {
-      "title": "Test Post",
-      "body": "This is a test post from job queue",
-      "userId": 1
-    }
-  }
-}
-```
-
-### Calculation Jobs
-
-**Sum Calculation:**
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "sum",
-    "numbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  }
-}
-```
-
-**Average Calculation:**
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "average",
-    "numbers": [10, 20, 30, 40, 50]
-  }
-}
-```
-
-**Multiplication:**
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "multiply",
-    "numbers": [2, 3, 4, 5]
-  }
-}
-```
-
-**Find Maximum:**
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "max",
-    "numbers": [15, 7, 23, 9, 42, 3, 18]
-  }
-}
-```
-
-**Find Minimum:**
-```json
-{
-  "task_type": "calculation",
-  "payload": {
-    "operation": "min",
-    "numbers": [15, 7, 23, 9, 42, 3, 18]
-  }
-}
-```
-
-### File Operation Jobs
-
-**Write File:**
-```json
-{
-  "task_type": "file_operation",
-  "payload": {
-    "operation": "write",
-    "filename": "hello.txt",
-    "content": "Hello from the AsyncJobQueue!\nThis is a test file.\nTimestamp: 2024-01-15"
-  }
-}
-```
-
-**Read File:**
-```json
-{
-  "task_type": "file_operation",
-  "payload": {
-    "operation": "read",
-    "filename": "hello.txt"
-  }
-}
-```
-
-### Data Transformation Jobs
-
-**Reverse String:**
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "reverse",
-    "data": "Hello World!"
-  }
-}
-```
-
-**Convert to Uppercase:**
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "uppercase",
-    "data": "hello world"
-  }
-}
-```
-
-**Convert to Lowercase:**
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "lowercase",
-    "data": "HELLO WORLD"
-  }
-}
-```
-
-**Generate MD5 Hash:**
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "hash",
-    "data": "password123"
-  }
-}
-```
-
-**Reverse Array:**
-```json
-{
-  "task_type": "data_transformation",
-  "payload": {
-    "transform_type": "reverse",
-    "data": ["apple", "banana", "cherry", "date"]
-  }
-}
-```
-
-### Echo Job (Default)
-```json
-{
-  "task_type": "echo",
-  "payload": {
-    "message": "Hello from job queue",
-    "timestamp": "2024-01-15T10:30:00Z",
-    "data": {
-      "key1": "value1",
-      "key2": "value2"
-    }
-  }
-}
-```
-
-## 📡 How to Submit Jobs
-
-### Using curl:
-```bash
-# Submit a calculation job
-curl -X POST "http://localhost:8000/submit" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task_type": "calculation",
-    "payload": {
-      "operation": "sum",
-      "numbers": [1, 2, 3, 4, 5]
-    }
-  }'
-```
-
-### Using Python requests:
-```python
-import requests
-
-job_data = {
-    "task_type": "http_request",
-    "payload": {
-        "method": "GET",
-        "url": "https://api.github.com/users/octocat"
-    }
-}
-
-response = requests.post("http://localhost:8000/submit", json=job_data)
-job_id = response.json()["job_id"]
-print(f"Job submitted: {job_id}")
-```
-
-### Check Job Status:
-```bash
-curl "http://localhost:8000/status/{job_id}"
-```
-
-## 🎯 Expected Responses
-
-### Job Submission Response:
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "queued",
-  "task_type": "calculation",
-  "message": "Job submitted successfully"
-}
-```
-
-### Job Status Response (Done):
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "done",
-  "task_type": "calculation",
-  "payload": {
-    "operation": "sum",
-    "numbers": [1, 2, 3, 4, 5]
-  },
-  "result": {
-    "result": 15,
-    "operation": "sum",
-    "numbers": [1, 2, 3, 4, 5]
-  },
-  "error": null,
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:05Z",
-  "completed_at": "2024-01-15T10:30:05Z"
-}
-```
-
-### Job Status Response (Failed):
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "failed",
-  "task_type": "http_request",
-  "payload": {
-    "method": "GET",
-    "url": "https://invalid-url.com"
-  },
-  "result": null,
-  "error": "Connection timeout",
-  "created_at": "2024-01-15T10:30:00Z",
-  "updated_at": "2024-01-15T10:30:05Z",
-  "completed_at": "2024-01-15T10:30:05Z"
-}
-```
-
-## 🗄️ Database Schema
-
-```sql
-CREATE TABLE jobs (
-    id VARCHAR PRIMARY KEY,
-    status VARCHAR NOT NULL DEFAULT 'queued',
-    task_type VARCHAR NOT NULL DEFAULT 'echo',
-    payload JSON NOT NULL,
-    result JSON,
-    error TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE
-);
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_HOST` | `localhost` | Database host |
-| `DB_PORT` | `5432` | Database port |
-| `DB_NAME` | `asyncjobqueue` | Database name |
-| `DB_USER` | `postgres` | Database user |
-| `DB_PASSWORD` | `password` | Database password |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `MAX_WORKERS` | `1` | Number of worker processes |
-| `JOB_TIMEOUT` | `300` | Job timeout in seconds |
-| `CLEANUP_DAYS` | `30` | Days to keep old jobs |
-
-## 📊 Job Statuses
-
-- **queued**: Job is waiting to be processed
-- **processing**: Job is currently being processed
-- **done**: Job completed successfully
-- **failed**: Job failed with an error
-
-## 🛡️ Error Handling
-
-The system includes comprehensive error handling:
-
-- **Input Validation**: Validates job payloads before processing
-- **Database Errors**: Handles database connection issues gracefully
-- **Task Errors**: Captures and stores task execution errors
-- **HTTP Errors**: Proper error responses with status codes
-
-## 📈 Monitoring
-
-### Metrics Endpoint
-```bash
-  GET /metrics
+- **Check running containers:**
+  ```bash
+  docker-compose ps
+  ```
+- **View logs for all services:**
+  ```bash
+  docker-compose logs -f
+  ```
+- **View logs for a specific service:**
+  ```bash
+  docker-compose logs -f app
+  docker-compose logs -f task-generator
+  docker-compose logs -f postgres
+  docker-compose logs -f redis
   ```
 
-Returns:
-```json
-{
-  "total_jobs": 100,
-  "done": 85,
-  "processing": 5,
-  "queued": 8,
-  "failed": 2
-}
-```
+### 3. Access Application Endpoints
 
-### Logging
-The application logs all operations to help with debugging and monitoring.
+- **Main API:** [http://localhost:8000](http://localhost:8000)
+- **Task Generator:** [http://localhost:8001](http://localhost:8001)
+- **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Health Checks:**
+  - Main API: [http://localhost:8000/health](http://localhost:8000/health)
+  - Task Generator: [http://localhost:8001/health](http://localhost:8001/health)
 
-## 🔄 Background Processing
+### 4. Interact with the Application
 
-Jobs are processed asynchronously by background workers:
+- **Submit a job:**
+  ```bash
+  curl -X POST "http://localhost:8000/jobs/" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "task_type": "http_request",
+      "payload": {"url": "https://jsonplaceholder.typicode.com/posts/1", "method": "GET"},
+      "priority": "normal"
+    }'
+  ```
+- **Check job status:**
+  ```bash
+  curl "http://localhost:8000/jobs/{job_id}"
+  ```
+- **Generate a single task from the generator:**
+  ```bash
+  curl -X POST "http://localhost:8001/generate-single"
+  ```
+- **Generate a batch of tasks:**
+  ```bash
+  curl -X POST "http://localhost:8001/generate-batch/5"
+  ```
 
-1. Job is submitted and stored in database
-2. Job is added to processing queue
-3. Worker picks up job and updates status to "processing"
-4. Job is executed based on task type
-5. Result is stored and status updated to "done" or "failed"
+### 5. Stopping and Restarting
 
-## 🧪 Testing
+- **Stop all services:**
+  ```bash
+  docker-compose down
+  ```
+- **Restart all services:**
+  ```bash
+  docker-compose up --build
+  ```
+- **Remove all containers, networks, and volumes:**
+  ```bash
+  docker-compose down -v --rmi all
+  ```
 
-### Interactive API Documentation
-Visit `http://localhost:8000/docs` for interactive API documentation.
+### 6. Troubleshooting
 
-### Sample Test Script
-```python
-import asyncio
-import aiohttp
-import json
+- **Check health endpoints:**
+  - [http://localhost:8000/health](http://localhost:8000/health)
+  - [http://localhost:8001/health](http://localhost:8001/health)
+- **Check logs for errors:**
+  ```bash
+  docker-compose logs -f
+  ```
+- **Check port conflicts:**
+  - PostgreSQL uses port 5433 (not 5432) to avoid local conflicts.
 
-async def test_job_queue():
-    async with aiohttp.ClientSession() as session:
-        # Submit a calculation job
-        payload = {
-            "task_type": "calculation",
-            "payload": {
-                "operation": "sum",
-                "numbers": [1, 2, 3, 4, 5]
-            }
-        }
-        
-        async with session.post("http://localhost:8000/submit", json=payload) as response:
-            result = await response.json()
-            job_id = result["job_id"]
-            print(f"Submitted job: {job_id}")
-        
-        # Wait and check status
-        await asyncio.sleep(3)
-        
-        async with session.get(f"http://localhost:8000/status/{job_id}") as response:
-            status = await response.json()
-            print(f"Job status: {status}")
+---
 
-# Run test
-asyncio.run(test_job_queue())
-```
+## Services
 
-## 🚀 Production Deployment
+### 1. AsyncJobQueue API (`app/`)
+- FastAPI-based job queue and processor
+- RESTful API for job submission, status, and results
+- Persistent storage in PostgreSQL
+- Real-time status and health monitoring
+- See [`app/README.md`](app/README.md) for details
 
-### Docker Deployment
-```dockerfile
-FROM python:3.9-slim
+### 2. Task Generator (`task_generator/`)
+- Microservice for automated, intelligent task generation
+- Supports multiple task types and priorities
+- Monitors processor health and adapts behavior
+- See [`task_generator/README.md`](task_generator/README.md) for details
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+### 3. PostgreSQL
+- Stores all job and task history
+- Exposed on port 5433 (to avoid local conflicts)
 
-COPY . .
-EXPOSE 8000
+### 4. Redis
+- Used for caching and rate limiting
+- Exposed on port 6379
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+---
 
-### Environment Variables for Production
+## Quick Start
+
+### Prerequisites
+- Docker Desktop (with Compose)
+- At least 2GB RAM
+
+### 1. Clone the repository
 ```bash
-DB_HOST=your-db-host
-DB_PORT=5432
-DB_NAME=asyncjobqueue
-DB_USER=your-db-user
-DB_PASSWORD=your-secure-password
-LOG_LEVEL=WARNING
-MAX_WORKERS=4
+cd fastapi-practice
 ```
 
-## 🤝 Contributing
+### 2. Build and start all services
+```bash
+docker-compose up --build
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+### 3. Access the services
+- Main API: [http://localhost:8000](http://localhost:8000)
+- Task Generator: [http://localhost:8001](http://localhost:8001)
+- API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## 📄 License
+---
+
+## Health Checks & Monitoring
+- Main API: `GET /health`
+- Task Generator: `GET /health`
+- All services have Docker health checks and will restart on failure.
+
+---
+
+## Configuration
+
+All configuration is via environment variables (see each service's README for details). Example variables:
+
+- `DATABASE_URL` (for both services)
+- `REDIS_URL`
+- `TASK_PROCESSOR_URL` (for task generator)
+- `GENERATION_INTERVAL`, `MAX_CONCURRENT_TASKS`, etc.
+
+---
+
+## Development
+
+- Each service can be run and developed independently.
+- See [`app/README.md`](app/README.md) and [`task_generator/README.md`](task_generator/README.md) for local development instructions.
+- Use Docker Compose for full integration testing.
+
+---
+
+## Troubleshooting
+
+- **Port conflicts:** PostgreSQL uses 5433 by default in Docker Compose.
+- **Service health:** Use `/health` endpoints and `docker-compose logs` for diagnostics.
+- **Reset everything:**
+  ```bash
+  docker-compose down -v --rmi all
+  docker-compose up --build
+  ```
+
+---
+
+## Extending the System
+
+- Add new microservices by creating a new directory and Dockerfile, then update `docker-compose.yml`.
+- Add new job/task types by extending the models and logic in each service.
+- Use environment variables for all configuration to keep services decoupled.
+
+---
+
+## License
 
 This project is licensed under the MIT License.
 
-## 🆘 Support
+---
 
-For issues and questions:
-1. Check the logs for error messages
-2. Verify database connectivity
-3. Ensure all dependencies are installed
-4. Check the API documentation at `/docs`
+## Contributors
+- [Your Name Here]
+
+---
+
+For detailed service documentation, see:
+- [`app/README.md`](app/README.md)
+- [`task_generator/README.md`](task_generator/README.md)

@@ -6,3 +6,5 @@ aiofiles
 sqlalchemy[asyncio]
 alembic 
 docker
+requests
+pydantic-settings

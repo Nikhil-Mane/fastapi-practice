@@ -1,20 +1,21 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
-from sqlalchemy import select, update
+from sqlalchemy import select, update, text
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import json
 import logging
+from contextlib import asynccontextmanager
 
-from app.models.job import Base, JobDB
-from app.config import DB_URL
+from ..models.job import Base, JobDB
+from ..config import settings
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Convert PostgreSQL URL to async version
-ASYNC_DB_URL = DB_URL.replace("postgresql://", "postgresql+asyncpg://")
+ASYNC_DB_URL = settings.DB_URL.replace("postgresql://", "postgresql+asyncpg://")
 
 # Create async engine
 engine = create_async_engine(
@@ -29,6 +30,12 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession, 
     expire_on_commit=False
 )
+
+@asynccontextmanager
+async def get_db():
+    """Get database session for health checks."""
+    async with AsyncSessionLocal() as session:
+        yield session
 
 async def init_db():
     """Initialize database tables."""

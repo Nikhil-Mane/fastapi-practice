@@ -1,92 +1,35 @@
 import asyncio
 import logging
-import subprocess
+import os
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.services.db import init_db, close_db
-from app.services.worker import start_workers, stop_workers
-from app.routes.jobs import router as jobs_router
+from sqlalchemy import text
+from .services.db import init_db, close_db
+from .services.worker import start_workers, stop_workers
+from .routes.jobs import router as jobs_router
 
 logger = logging.getLogger(__name__)
 
 async def setup_database():
-    """Automatically setup database connection."""
+    """Setup database connection using environment variables."""
     try:
-        # Try to initialize database (will fail if DB doesn't exist)
         await init_db()
-        logger.info("✅ Connected to existing database")
+        logger.info("✅ Connected to database successfully")
         return True
     except Exception as e:
-        logger.warning(f"Database connection failed: {e}")
-        logger.info("🔄 Attempting to create database...")
-        
-        try:
-            # Check if Docker is running
-            result = subprocess.run(
-                ["docker", "info"], 
-                capture_output=True, 
-                text=True,
-                timeout=5
-            )
-            
-            if result.returncode != 0:
-                logger.error("❌ Docker is not running")
-                logger.info("💡 Please start Docker Desktop or install PostgreSQL locally")
-                logger.info("💡 For Docker: Start Docker Desktop application")
-                logger.info("💡 For local PostgreSQL: Install and create database 'asyncjobqueue'")
-                return False
-            
-            # Check if PostgreSQL container is already running
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=postgres-jobqueue", "--format", "{{.Names}}"],
-                capture_output=True, text=True
-            )
-            
-            if "postgres-jobqueue" not in result.stdout:
-                logger.info("🚀 Starting PostgreSQL in Docker...")
-                subprocess.run([
-                    "docker", "run", "--name", "postgres-jobqueue",
-                    "-e", "POSTGRES_DB=asyncjobqueue",
-                    "-e", "POSTGRES_USER=postgres", 
-                    "-e", "POSTGRES_PASSWORD=password",
-                    "-p", "5432:5432",
-                    "-d", "postgres:13"
-                ], check=True)
-                
-                # Wait for database to be ready
-                logger.info("⏳ Waiting for database to be ready...")
-                time.sleep(10)
-            
-            # Try to initialize again
-            await init_db()
-            logger.info("✅ Database created and connected successfully")
-            return True
-            
-        except subprocess.TimeoutExpired:
-            logger.error("❌ Docker command timed out - Docker may not be running")
-            logger.info("💡 Please start Docker Desktop")
-            return False
-        except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Failed to start PostgreSQL in Docker: {e}")
-            logger.info("💡 Please ensure Docker is running or PostgreSQL is installed locally")
-            return False
-        except Exception as e:
-            logger.error(f"❌ Failed to setup database: {e}")
-            return False
+        logger.error(f"❌ Database connection failed: {e}")
+        return False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle events."""
     try:
-        # Setup database automatically
+        # Setup database
         db_ready = await setup_database()
         if not db_ready:
             logger.error("❌ Cannot start application without database")
-            logger.info("🔧 Manual setup required:")
-            logger.info("   1. Start Docker Desktop, OR")
-            logger.info("   2. Install PostgreSQL and create database 'asyncjobqueue'")
             raise Exception("Database setup failed")
         
         # Create a shared job queue and start workers
@@ -119,3 +62,21 @@ app.include_router(jobs_router)
 def read_root() -> dict:
     """Root endpoint that returns a simple status message."""
     return {"message": "AsyncJobQueue API is running"}
+
+@app.get("/health")
+async def health_check() -> dict:
+    """Health check endpoint for Docker."""
+    try:
+        # Check database connection
+        from app.services.db import get_db
+        async with get_db() as db:
+            await db.execute(text("SELECT 1"))
+        
+        return {
+            "status": "healthy",
+            "service": "AsyncJobQueue API",
+            "database": "connected",
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
