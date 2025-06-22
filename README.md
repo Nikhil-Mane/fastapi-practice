@@ -1,137 +1,553 @@
-# AsyncJobQueue – Real-Time Async Task Processor
+# AsyncJobQueue API
 
-## 🚀 Overview
-AsyncJobQueue is a production-style, real-time asynchronous job processing system built with FastAPI, asyncio, asyncpg, aiohttp, and aiofiles. It demonstrates modern async Python patterns for scalable background processing, API integration, and database/file I/O.
+A FastAPI-based asynchronous job queue system with persistent database storage, supporting various types of real-world tasks.
 
----
+## 🚀 Features
 
-## ✨ Features
-- **Concurrent Job Submission:** Submit jobs via HTTP, processed in the background.
-- **Async Background Processing:** Jobs are handled by async workers using `asyncio.Queue`.
-- **Async Database Integration:** Store and retrieve job status/results in PostgreSQL using `asyncpg`.
-- **Async HTTP Requests:** Call external APIs as part of job processing with `aiohttp`.
-- **Timeouts & Retries:** Robust job execution with timeouts and retry logic.
-- **Controlled Concurrency:** Limit concurrent processing with `asyncio.Semaphore`.
-- **Graceful Shutdown:** Clean up background tasks on server shutdown.
-- **Async File Logging:** Log job status to files using `aiofiles`.
-- **Metrics Endpoint:** Monitor processed jobs and server health.
+- **Persistent Storage**: PostgreSQL database for job persistence
+- **Multiple Task Types**: HTTP requests, calculations, file operations, data transformations
+- **Real-time Processing**: Asynchronous job processing with background workers
+- **RESTful API**: Complete REST API for job management
+- **Error Handling**: Comprehensive error handling and logging
+- **Metrics**: Real-time job metrics and statistics
+- **Pagination**: Support for large job lists with pagination
 
----
+## 🛠️ Task Types Supported
 
-## 🧱 Architecture
-```
-[Client] --> [FastAPI Async Endpoint] --> [Job Queue (asyncio.Queue)]
-                                      --> [Worker Coroutines]
-                                      --> [Async DB + External API]
-                                      --> [Status Logging/File Output]
-```
-
----
-
-## 🗂️ Project Structure
-```
-app/
-  main.py                # FastAPI app, background worker setup
-  config.py              # Configuration (DB, API URLs, etc.)
-  requirements.txt       # Python dependencies
-  routes/
-    jobs.py              # Job submission/status endpoints
-  services/
-    worker.py            # Async worker logic
-    http_client.py       # Async HTTP client
-    db.py                # Async DB access
-    logger.py            # Async file logger
-  models/
-    job.py               # Job data model
-README.md
+### 1. HTTP Requests
+```json
+{
+  "task_type": "http_request",
+  "payload": {
+    "method": "GET",
+    "url": "https://api.github.com/users/octocat",
+    "headers": {"User-Agent": "JobQueue/1.0"}
+  }
+}
 ```
 
----
+### 2. Mathematical Calculations
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "sum",
+    "numbers": [1, 2, 3, 4, 5]
+  }
+}
+```
 
-## ⚙️ Setup & Run
-1. **Clone the repo:**
-   ```sh
-   git clone <repo-url>
+### 3. File Operations
+```json
+{
+  "task_type": "file_operation",
+  "payload": {
+    "operation": "write",
+    "filename": "output.txt",
+    "content": "Hello World!"
+  }
+}
+```
+
+### 4. Data Transformations
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "uppercase",
+    "data": "hello world"
+  }
+}
+```
+
+## 📋 Prerequisites
+
+- Python 3.8+
+- PostgreSQL 12+ (or Docker for automatic setup)
+- pip
+
+## 🚀 Quick Start
+
+### 1. Clone and Setup
+
+```bash
+git clone <repository-url>
    cd fastapi-practice
    ```
-2. **Install dependencies:**
-   ```sh
-   pip install -r app/requirements.txt
-   ```
-3. **Configure PostgreSQL:**
-   - Update `DB_URL` in `app/config.py`.
-   - Create the jobs table:
-     ```sql
-     CREATE TABLE job_results (
-         job_id UUID PRIMARY KEY,
-         status TEXT NOT NULL,
-         result JSONB
-     );
-     ```
-4. **Run the server:**
-   ```sh
-   uvicorn app.main:app --reload
-   ```
 
----
+### 2. Install Dependencies
 
-## 🛠️ Usage
-- **Submit a job:**
-  ```http
-  POST /submit
-  Content-Type: application/json
-  { "task": "do_something", "params": { ... } }
-  ```
-- **Check job status/result:**
-  ```http
-  GET /status/{job_id}
-  ```
-- **Get server metrics:**
-  ```http
+```bash
+cd app
+pip install -r requirements.txt
+```
+
+### 3. Run the Application
+
+```bash
+uvicorn main:app --reload
+```
+
+The application will automatically:
+- Start PostgreSQL in Docker (if Docker is running)
+- Create database tables
+- Start background workers
+- Be ready to accept jobs
+
+## 📚 API Endpoints
+
+### Job Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/submit` | Submit a new job |
+| `GET` | `/status/{job_id}` | Get job status and result |
+| `GET` | `/jobs` | Get all jobs (with pagination) |
+| `GET` | `/jobs/{status}` | Get jobs by status |
+| `DELETE` | `/jobs/{job_id}` | Delete a job |
+| `GET` | `/metrics` | Get system metrics |
+
+## 📝 Sample Jobs
+
+### HTTP Request Jobs
+
+**GET Request:**
+```json
+{
+  "task_type": "http_request",
+  "payload": {
+    "method": "GET",
+    "url": "https://jsonplaceholder.typicode.com/posts/1",
+    "headers": {
+      "User-Agent": "JobQueue/1.0"
+    }
+  }
+}
+```
+
+**POST Request:**
+```json
+{
+  "task_type": "http_request",
+  "payload": {
+    "method": "POST",
+    "url": "https://jsonplaceholder.typicode.com/posts",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "data": {
+      "title": "Test Post",
+      "body": "This is a test post from job queue",
+      "userId": 1
+    }
+  }
+}
+```
+
+### Calculation Jobs
+
+**Sum Calculation:**
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "sum",
+    "numbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  }
+}
+```
+
+**Average Calculation:**
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "average",
+    "numbers": [10, 20, 30, 40, 50]
+  }
+}
+```
+
+**Multiplication:**
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "multiply",
+    "numbers": [2, 3, 4, 5]
+  }
+}
+```
+
+**Find Maximum:**
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "max",
+    "numbers": [15, 7, 23, 9, 42, 3, 18]
+  }
+}
+```
+
+**Find Minimum:**
+```json
+{
+  "task_type": "calculation",
+  "payload": {
+    "operation": "min",
+    "numbers": [15, 7, 23, 9, 42, 3, 18]
+  }
+}
+```
+
+### File Operation Jobs
+
+**Write File:**
+```json
+{
+  "task_type": "file_operation",
+  "payload": {
+    "operation": "write",
+    "filename": "hello.txt",
+    "content": "Hello from the AsyncJobQueue!\nThis is a test file.\nTimestamp: 2024-01-15"
+  }
+}
+```
+
+**Read File:**
+```json
+{
+  "task_type": "file_operation",
+  "payload": {
+    "operation": "read",
+    "filename": "hello.txt"
+  }
+}
+```
+
+### Data Transformation Jobs
+
+**Reverse String:**
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "reverse",
+    "data": "Hello World!"
+  }
+}
+```
+
+**Convert to Uppercase:**
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "uppercase",
+    "data": "hello world"
+  }
+}
+```
+
+**Convert to Lowercase:**
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "lowercase",
+    "data": "HELLO WORLD"
+  }
+}
+```
+
+**Generate MD5 Hash:**
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "hash",
+    "data": "password123"
+  }
+}
+```
+
+**Reverse Array:**
+```json
+{
+  "task_type": "data_transformation",
+  "payload": {
+    "transform_type": "reverse",
+    "data": ["apple", "banana", "cherry", "date"]
+  }
+}
+```
+
+### Echo Job (Default)
+```json
+{
+  "task_type": "echo",
+  "payload": {
+    "message": "Hello from job queue",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "data": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+  }
+}
+```
+
+## 📡 How to Submit Jobs
+
+### Using curl:
+```bash
+# Submit a calculation job
+curl -X POST "http://localhost:8000/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_type": "calculation",
+    "payload": {
+      "operation": "sum",
+      "numbers": [1, 2, 3, 4, 5]
+    }
+  }'
+```
+
+### Using Python requests:
+```python
+import requests
+
+job_data = {
+    "task_type": "http_request",
+    "payload": {
+        "method": "GET",
+        "url": "https://api.github.com/users/octocat"
+    }
+}
+
+response = requests.post("http://localhost:8000/submit", json=job_data)
+job_id = response.json()["job_id"]
+print(f"Job submitted: {job_id}")
+```
+
+### Check Job Status:
+```bash
+curl "http://localhost:8000/status/{job_id}"
+```
+
+## 🎯 Expected Responses
+
+### Job Submission Response:
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "queued",
+  "task_type": "calculation",
+  "message": "Job submitted successfully"
+}
+```
+
+### Job Status Response (Done):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "done",
+  "task_type": "calculation",
+  "payload": {
+    "operation": "sum",
+    "numbers": [1, 2, 3, 4, 5]
+  },
+  "result": {
+    "result": 15,
+    "operation": "sum",
+    "numbers": [1, 2, 3, 4, 5]
+  },
+  "error": null,
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:05Z",
+  "completed_at": "2024-01-15T10:30:05Z"
+}
+```
+
+### Job Status Response (Failed):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "failed",
+  "task_type": "http_request",
+  "payload": {
+    "method": "GET",
+    "url": "https://invalid-url.com"
+  },
+  "result": null,
+  "error": "Connection timeout",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:05Z",
+  "completed_at": "2024-01-15T10:30:05Z"
+}
+```
+
+## 🗄️ Database Schema
+
+```sql
+CREATE TABLE jobs (
+    id VARCHAR PRIMARY KEY,
+    status VARCHAR NOT NULL DEFAULT 'queued',
+    task_type VARCHAR NOT NULL DEFAULT 'echo',
+    payload JSON NOT NULL,
+    result JSON,
+    error TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | `localhost` | Database host |
+| `DB_PORT` | `5432` | Database port |
+| `DB_NAME` | `asyncjobqueue` | Database name |
+| `DB_USER` | `postgres` | Database user |
+| `DB_PASSWORD` | `password` | Database password |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `MAX_WORKERS` | `1` | Number of worker processes |
+| `JOB_TIMEOUT` | `300` | Job timeout in seconds |
+| `CLEANUP_DAYS` | `30` | Days to keep old jobs |
+
+## 📊 Job Statuses
+
+- **queued**: Job is waiting to be processed
+- **processing**: Job is currently being processed
+- **done**: Job completed successfully
+- **failed**: Job failed with an error
+
+## 🛡️ Error Handling
+
+The system includes comprehensive error handling:
+
+- **Input Validation**: Validates job payloads before processing
+- **Database Errors**: Handles database connection issues gracefully
+- **Task Errors**: Captures and stores task execution errors
+- **HTTP Errors**: Proper error responses with status codes
+
+## 📈 Monitoring
+
+### Metrics Endpoint
+```bash
   GET /metrics
   ```
 
----
+Returns:
+```json
+{
+  "total_jobs": 100,
+  "done": 85,
+  "processing": 5,
+  "queued": 8,
+  "failed": 2
+}
+```
 
-## 🧰 Tech Stack
-- FastAPI – async web server
-- asyncio – concurrency core
-- asyncpg – async PostgreSQL
-- aiohttp – async HTTP client
-- aiofiles – async file writing
-- uvicorn – ASGI server
-- PostgreSQL – job storage
+### Logging
+The application logs all operations to help with debugging and monitoring.
 
----
+## 🔄 Background Processing
 
-## 🧠 Concepts Demonstrated
-- `async def` / `await` everywhere (HTTP, DB, file, tasks)
-- `asyncio.Queue` for background task queue
-- `asyncio.gather` for parallel API calls
-- `asyncio.Semaphore` for concurrency control
-- Timeout & retry logic
-- Async context managers (HTTP, DB, file)
-- Graceful shutdown with signal handling
+Jobs are processed asynchronously by background workers:
 
----
+1. Job is submitted and stored in database
+2. Job is added to processing queue
+3. Worker picks up job and updates status to "processing"
+4. Job is executed based on task type
+5. Result is stored and status updated to "done" or "failed"
 
-## 🏆 Best Coding Practices
+## 🧪 Testing
 
-- **Separation of Concerns:** Organize code by responsibility (routes, services, models, config).
-- **Type Hints:** Use type hints and Pydantic models for data validation and clarity.
-- **Async Everywhere:** Use async/await for all I/O-bound operations (DB, HTTP, file, background tasks).
-- **Connection Pooling:** Use asyncpg connection pools for efficient DB access.
-- **Resource Cleanup:** Implement graceful shutdown for background tasks and DB connections.
-- **Error Handling:** Use try/except blocks and FastAPI exception handlers for robust error management.
-- **Configuration Management:** Store secrets and config in environment variables or config files, not in code.
-- **Logging:** Use structured, async logging for observability (e.g., aiofiles for file logs).
-- **Testing:** Write async unit and integration tests for endpoints and services.
-- **Documentation:** Document endpoints and code with docstrings and OpenAPI (FastAPI auto-generates docs).
-- **Security:** Validate all input, use HTTPS in production, and secure DB/API credentials.
-- **Dependency Management:** Pin dependency versions in requirements.txt and use virtual environments.
-- **Code Formatting:** Use tools like black, isort, and flake8 for consistent code style.
+### Interactive API Documentation
+Visit `http://localhost:8000/docs` for interactive API documentation.
 
----
+### Sample Test Script
+```python
+import asyncio
+import aiohttp
+import json
 
-## 🔚 Summary
-This project provides a deep, practical understanding of async Python in real-world scenarios, with production-quality architecture and best practices.
+async def test_job_queue():
+    async with aiohttp.ClientSession() as session:
+        # Submit a calculation job
+        payload = {
+            "task_type": "calculation",
+            "payload": {
+                "operation": "sum",
+                "numbers": [1, 2, 3, 4, 5]
+            }
+        }
+        
+        async with session.post("http://localhost:8000/submit", json=payload) as response:
+            result = await response.json()
+            job_id = result["job_id"]
+            print(f"Submitted job: {job_id}")
+        
+        # Wait and check status
+        await asyncio.sleep(3)
+        
+        async with session.get(f"http://localhost:8000/status/{job_id}") as response:
+            status = await response.json()
+            print(f"Job status: {status}")
+
+# Run test
+asyncio.run(test_job_queue())
+```
+
+## 🚀 Production Deployment
+
+### Docker Deployment
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Environment Variables for Production
+```bash
+DB_HOST=your-db-host
+DB_PORT=5432
+DB_NAME=asyncjobqueue
+DB_USER=your-db-user
+DB_PASSWORD=your-secure-password
+LOG_LEVEL=WARNING
+MAX_WORKERS=4
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the logs for error messages
+2. Verify database connectivity
+3. Ensure all dependencies are installed
+4. Check the API documentation at `/docs`
