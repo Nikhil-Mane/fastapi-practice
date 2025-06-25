@@ -1,3 +1,5 @@
+"""Main entry point for the AsyncJobQueue FastAPI application."""
+import uuid
 import asyncio
 import logging
 import os
@@ -9,6 +11,10 @@ from sqlalchemy import text
 from .services.db import init_db, close_db
 from .services.worker import start_workers, stop_workers
 from .routes.jobs import router as jobs_router
+from .routes.products import router as products_router
+from .routes.orders import router as orders_router
+from .routes.users import router as users_router
+from .routes.cart import router as cart_router
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +63,10 @@ app.add_middleware(
 
 # Register routers
 app.include_router(jobs_router)
+app.include_router(products_router)
+app.include_router(orders_router)
+app.include_router(users_router)
+app.include_router(cart_router)
 
 @app.get("/")
 def read_root() -> dict:

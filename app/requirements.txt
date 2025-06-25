@@ -8,3 +8,8 @@ alembic
 docker
 requests
 pydantic-settings
+python-jose
+pydantic
+python-dotenv
+passlib[bcrypt]
+pydantic[email]

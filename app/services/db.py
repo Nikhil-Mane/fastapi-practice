@@ -1,3 +1,4 @@
+"""Database service and session management for AsyncJobQueue."""
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, update, text

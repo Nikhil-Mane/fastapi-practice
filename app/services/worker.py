@@ -1,3 +1,4 @@
+"""Worker service for processing jobs in AsyncJobQueue."""
 import asyncio
 import aiohttp
 import hashlib
@@ -7,6 +8,10 @@ from typing import Dict, Any, Optional
 import logging
 
 from app.services.db import JobService
+from app.models.order import Order
+from app.models.product import Product
+from app.services.db import AsyncSessionLocal
+from sqlalchemy import select
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -169,6 +174,41 @@ class JobProcessor:
             return {"error": str(e)}
 
     @staticmethod
+    async def process_order(job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process an e-commerce order: deduct stock, update order status, simulate payment, and notification."""
+        order_id = job_data.get("order_id")
+        if not order_id:
+            return {"error": "order_id is required"}
+        async with AsyncSessionLocal() as session:
+            # Fetch order
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if not order:
+                return {"error": f"Order {order_id} not found"}
+            # Fetch product
+            result = await session.execute(select(Product).where(Product.id == order.product_id))
+            product = result.scalar_one_or_none()
+            if not product:
+                return {"error": f"Product {order.product_id} not found"}
+            if product.stock < order.quantity:
+                order.status = "failed"
+                await session.commit()
+                return {"error": "Insufficient stock"}
+            # Simulate payment
+            payment_success = True  # Simulate always successful
+            if not payment_success:
+                order.status = "payment_failed"
+                await session.commit()
+                return {"error": "Payment failed"}
+            # Deduct stock and update order status
+            product.stock -= order.quantity
+            order.status = "processed"
+            await session.commit()
+            # Simulate notification (stub)
+            logger.info(f"Order {order_id} processed and confirmation notification sent.")
+            return {"message": f"Order {order_id} processed and confirmation sent"}
+
+    @staticmethod
     async def process_job(task_type: str, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process a job based on its task type."""
         if task_type == "http_request":
@@ -179,6 +219,8 @@ class JobProcessor:
             return await JobProcessor.process_file_operation(job_data)
         elif task_type == "data_transformation":
             return await JobProcessor.process_data_transformation(job_data)
+        elif task_type == "order_processing":
+            return await JobProcessor.process_order(job_data)
         else:
             # Default echo behavior
             return {"echo": job_data}

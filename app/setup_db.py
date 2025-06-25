@@ -8,11 +8,14 @@ import asyncio
 import os
 import sys
 
-# Add the app directory to the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the parent directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.db import init_db
-from app.config import DB_URL
+from .services.db import init_db
+from .config import Settings
+
+settings = Settings()
+DB_URL = settings.DB_URL
 
 async def setup_database():
     """Initialize the database tables."""
@@ -24,6 +27,8 @@ async def setup_database():
         print("✅ Database tables created successfully!")
         print("\nTables created:")
         print("- jobs (stores job information, status, and results)")
+        print("- products (stores product catalog)")
+        print("- orders (stores order information)")
         print("\nYou can now start the FastAPI application.")
         
     except Exception as e:

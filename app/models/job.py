@@ -1,3 +1,4 @@
+"""Job model for AsyncJobQueue."""
 from sqlalchemy import Column, String, JSON, DateTime, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func

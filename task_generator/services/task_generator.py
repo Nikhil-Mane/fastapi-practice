@@ -225,22 +225,22 @@ Alice Brown,28,Houston,70000"""
         """Generate data transformation payload that takes 1-2 minutes to execute."""
         transformations = [
             {
-                "transformation_type": DataTransformationType.JSON_TO_CSV,
+                "transform_type": "json_to_csv",
                 "data": self._generate_large_json_data(),
                 "options": {"include_headers": True, "chunk_size": 1000}
             },
             {
-                "transformation_type": DataTransformationType.CSV_TO_JSON,
+                "transform_type": "csv_to_json",
                 "data": self._generate_large_csv_data(),
                 "options": {"delimiter": ",", "chunk_size": 1000}
             },
             {
-                "transformation_type": DataTransformationType.XML_TO_JSON,
+                "transform_type": "xml_to_json",
                 "data": self._generate_large_xml_data(),
                 "options": {"pretty_print": True, "chunk_size": 1000}
             },
             {
-                "transformation_type": DataTransformationType.DATA_FILTER,
+                "transform_type": "data_filter",
                 "data": self._generate_large_json_data(),
                 "options": {
                     "filter_key": "value", 
@@ -250,7 +250,7 @@ Alice Brown,28,Houston,70000"""
                 }
             },
             {
-                "transformation_type": DataTransformationType.DATA_SORT,
+                "transform_type": "data_sort",
                 "data": self._generate_large_json_data(),
                 "options": {
                     "sort_key": "timestamp", 
@@ -260,7 +260,7 @@ Alice Brown,28,Houston,70000"""
                 }
             },
             {
-                "transformation_type": DataTransformationType.DATA_AGGREGATE,
+                "transform_type": "data_aggregate",
                 "data": self._generate_large_json_data(),
                 "options": {
                     "group_by": "category", 
@@ -270,7 +270,7 @@ Alice Brown,28,Houston,70000"""
                 }
             },
             {
-                "transformation_type": "data_machine_learning",
+                "transform_type": "data_machine_learning",
                 "data": self._generate_ml_dataset(),
                 "options": {
                     "algorithm": random.choice(["kmeans", "dbscan", "hierarchical"]),

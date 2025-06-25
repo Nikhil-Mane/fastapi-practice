@@ -1,154 +1,96 @@
-# AsyncJobQueue Microservices Project
+# FastAPI E-commerce Platform
 
-A robust, production-ready microservices system for asynchronous job processing, featuring FastAPI, PostgreSQL, Redis, and modular task generation.
+A modern, production-ready e-commerce platform built with FastAPI, PostgreSQL, and async background processing. Features include user authentication, product catalog, shopping cart, order management, admin controls, and real-time order processing.
 
 ---
 
-## Project Overview
+## Features
 
-This project implements a scalable, containerized job queue system with two main microservices:
-
-- **AsyncJobQueue API** (`app/`): Handles job management, processing, and status tracking.
-- **Task Generator** (`task_generator/`): Continuously generates and submits diverse tasks to the job queue.
-
-Supporting services:
-- **PostgreSQL**: Persistent storage for jobs and task history.
-- **Redis**: Caching and rate limiting.
-
-All services are orchestrated using Docker Compose for easy local development and deployment.
+- User registration, login, JWT authentication, and role-based access (user/admin)
+- Product catalog with pagination, filtering, and admin CRUD
+- Shopping cart for authenticated users
+- Place orders (single product or from cart)
+- Real-time async order processing (background worker)
+- Order history for users
+- Admin endpoints for managing users and orders
+- Dockerized for easy deployment
+- OpenAPI docs at `/docs`
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────┐    ┌─────────────────────┐    ┌───────────────┐
-│   Task Generator    │───▶│   AsyncJobQueue API │───▶│  PostgreSQL   │
-│   (Port 8001)       │    │   (Port 8000)       │    │  (Port 5433)  │
-└─────────────────────┘    └─────────────────────┘    └───────────────┘
-         │                           │
-         ▼                           ▼
-┌─────────────────────┐    ┌─────────────────────┐
-│   Redis Cache       │    │   Health Checks     │
-│   (Port 6379)       │    │   & Monitoring      │
-└─────────────────────┘    └─────────────────────┘
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Frontend   │───▶│   FastAPI    │───▶│  PostgreSQL  │
+│ (any client) │    │  E-commerce  │    │   Database   │
+└──────────────┘    └──────────────┘    └──────────────┘
+         │                  │
+         ▼                  ▼
+   ┌──────────────┐   ┌──────────────┐
+   │  Background  │   │   Docker     │
+   │   Worker     │   │   Compose    │
+   └──────────────┘   └──────────────┘
 ```
 
 ---
 
-## Application Running Details
+## API Overview
 
-### 1. Start All Services
+### Authentication
+- `POST /users/register` — Register a new user
+- `POST /users/login` — Login and receive JWT token
 
+### Products
+- `GET /products/` — List products (pagination, filtering, search)
+- `POST /products/` — Add product (admin only)
+- `PUT /products/{id}` — Update product (admin only)
+- `DELETE /products/{id}` — Delete product (admin only)
+
+### Cart
+- `POST /cart/add` — Add product to cart
+- `GET /cart/` — View cart
+- `POST /cart/remove` — Remove item from cart
+- `POST /cart/clear` — Clear cart
+
+### Orders
+- `POST /orders/` — Place order for a single product
+- `POST /orders/from_cart` — Place order for all items in cart
+- `GET /orders/my` — View your order history
+- `GET /orders/all` — List all orders (admin only)
+- `GET /orders/user/{user_id}` — List orders for a user (admin only)
+
+### Users (Admin)
+- `GET /users/all` — List all users (admin only)
+- `GET /users/{user_id}` — Get user by ID (admin only)
+
+---
+
+## Usage Examples
+
+### Register & Login
 ```bash
-docker-compose up --build
+curl -X POST http://localhost:8000/users/register -H "Content-Type: application/json" -d '{"username": "alice", "email": "alice@example.com", "password": "password"}'
+curl -X POST http://localhost:8000/users/login -H "Content-Type: application/json" -d '{"username": "alice", "email": "alice@example.com", "password": "password"}'
 ```
-- This command builds and starts all containers: PostgreSQL, Redis, AsyncJobQueue API, and Task Generator.
-- The first run may take a few minutes as images are built and dependencies installed.
 
-### 2. Monitor Service Status
+### Browse Products
+```bash
+curl http://localhost:8000/products/?skip=0&limit=10&search=phone
+```
 
-- **Check running containers:**
-  ```bash
-  docker-compose ps
-  ```
-- **View logs for all services:**
-  ```bash
-  docker-compose logs -f
-  ```
-- **View logs for a specific service:**
-  ```bash
-  docker-compose logs -f app
-  docker-compose logs -f task-generator
-  docker-compose logs -f postgres
-  docker-compose logs -f redis
-  ```
+### Add to Cart & Place Order
+```bash
+# Add to cart (requires JWT token)
+curl -X POST http://localhost:8000/cart/add -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"product_id": 1, "quantity": 2}'
+# Place order from cart
+curl -X POST http://localhost:8000/orders/from_cart -H "Authorization: Bearer <token>"
+```
 
-### 3. Access Application Endpoints
-
-- **Main API:** [http://localhost:8000](http://localhost:8000)
-- **Task Generator:** [http://localhost:8001](http://localhost:8001)
-- **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Checks:**
-  - Main API: [http://localhost:8000/health](http://localhost:8000/health)
-  - Task Generator: [http://localhost:8001/health](http://localhost:8001/health)
-
-### 4. Interact with the Application
-
-- **Submit a job:**
-  ```bash
-  curl -X POST "http://localhost:8000/jobs/" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "task_type": "http_request",
-      "payload": {"url": "https://jsonplaceholder.typicode.com/posts/1", "method": "GET"},
-      "priority": "normal"
-    }'
-  ```
-- **Check job status:**
-  ```bash
-  curl "http://localhost:8000/jobs/{job_id}"
-  ```
-- **Generate a single task from the generator:**
-  ```bash
-  curl -X POST "http://localhost:8001/generate-single"
-  ```
-- **Generate a batch of tasks:**
-  ```bash
-  curl -X POST "http://localhost:8001/generate-batch/5"
-  ```
-
-### 5. Stopping and Restarting
-
-- **Stop all services:**
-  ```bash
-  docker-compose down
-  ```
-- **Restart all services:**
-  ```bash
-  docker-compose up --build
-  ```
-- **Remove all containers, networks, and volumes:**
-  ```bash
-  docker-compose down -v --rmi all
-  ```
-
-### 6. Troubleshooting
-
-- **Check health endpoints:**
-  - [http://localhost:8000/health](http://localhost:8000/health)
-  - [http://localhost:8001/health](http://localhost:8001/health)
-- **Check logs for errors:**
-  ```bash
-  docker-compose logs -f
-  ```
-- **Check port conflicts:**
-  - PostgreSQL uses port 5433 (not 5432) to avoid local conflicts.
-
----
-
-## Services
-
-### 1. AsyncJobQueue API (`app/`)
-- FastAPI-based job queue and processor
-- RESTful API for job submission, status, and results
-- Persistent storage in PostgreSQL
-- Real-time status and health monitoring
-- See [`app/README.md`](app/README.md) for details
-
-### 2. Task Generator (`task_generator/`)
-- Microservice for automated, intelligent task generation
-- Supports multiple task types and priorities
-- Monitors processor health and adapts behavior
-- See [`task_generator/README.md`](task_generator/README.md) for details
-
-### 3. PostgreSQL
-- Stores all job and task history
-- Exposed on port 5433 (to avoid local conflicts)
-
-### 4. Redis
-- Used for caching and rate limiting
-- Exposed on port 6379
+### Admin: Add Product
+```bash
+curl -X POST http://localhost:8000/products/ -H "Authorization: Bearer <admin_token>" -H "Content-Type: application/json" -d '{"name": "Laptop", "description": "High-end laptop", "price": 1200, "stock": 10}'
+```
 
 ---
 
@@ -156,10 +98,12 @@ docker-compose up --build
 
 ### Prerequisites
 - Docker Desktop (with Compose)
-- At least 2GB RAM
+- Python 3.10+
+- PostgreSQL running (or use Docker Compose)
 
 ### 1. Clone the repository
 ```bash
+git clone <repo-url>
 cd fastapi-practice
 ```
 
@@ -168,70 +112,32 @@ cd fastapi-practice
 docker-compose up --build
 ```
 
-### 3. Access the services
+### 3. Access the API
 - Main API: [http://localhost:8000](http://localhost:8000)
-- Task Generator: [http://localhost:8001](http://localhost:8001)
 - API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## Health Checks & Monitoring
-- Main API: `GET /health`
-- Task Generator: `GET /health`
-- All services have Docker health checks and will restart on failure.
-
----
-
-## Configuration
-
-All configuration is via environment variables (see each service's README for details). Example variables:
-
-- `DATABASE_URL` (for both services)
-- `REDIS_URL`
-- `TASK_PROCESSOR_URL` (for task generator)
-- `GENERATION_INTERVAL`, `MAX_CONCURRENT_TASKS`, etc.
 
 ---
 
 ## Development
 
-- Each service can be run and developed independently.
-- See [`app/README.md`](app/README.md) and [`task_generator/README.md`](task_generator/README.md) for local development instructions.
-- Use Docker Compose for full integration testing.
+- Install dependencies: `pip install -r requirements.txt`
+- Run locally: `uvicorn app.main:app --reload`
+- Use Docker Compose for full stack: `docker-compose up --build`
+- Run tests: `pytest`
 
 ---
 
-## Troubleshooting
+## Configuration
 
-- **Port conflicts:** PostgreSQL uses 5433 by default in Docker Compose.
-- **Service health:** Use `/health` endpoints and `docker-compose logs` for diagnostics.
-- **Reset everything:**
-  ```bash
-  docker-compose down -v --rmi all
-  docker-compose up --build
-  ```
-
----
-
-## Extending the System
-
-- Add new microservices by creating a new directory and Dockerfile, then update `docker-compose.yml`.
-- Add new job/task types by extending the models and logic in each service.
-- Use environment variables for all configuration to keep services decoupled.
+- All config via environment variables (see `.env.example`)
+- Example: `DATABASE_URL`, `LOG_LEVEL`, etc.
 
 ---
 
 ## License
-
-This project is licensed under the MIT License.
+MIT
 
 ---
 
 ## Contributors
 - [Your Name Here]
-
----
-
-For detailed service documentation, see:
-- [`app/README.md`](app/README.md)
-- [`task_generator/README.md`](task_generator/README.md)

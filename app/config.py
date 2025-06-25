@@ -1,4 +1,4 @@
-# Configuration variables for the AsyncJobQueue project
+"""Configuration variables for the AsyncJobQueue project."""
 
 import os
 from typing import Optional
